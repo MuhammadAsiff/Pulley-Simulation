@@ -1,0 +1,47 @@
+
+
+html * {
+	font-family:  'Arial', sans-serif;
+	font-size: 14px;
+	line-height: 15px;
+}
+
+#selectBox {
+	width:200px;
+	height:90px;
+	border: 1px solid #ccc;
+	width: 120px;
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+#selectBox select {
+    padding: 5px 8px;
+    width: 130%;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    background-image: none;
+    -webkit-appearance: none;
+}
+
+#selectBox select:focus {
+    outline: none;
+}
+
+#left {
+	position:relative;
+	left:10px;
+
+}
+
+#rightOuter{
+	position:absolute;
+	left:150px;
+	top:0px;
+}
+
+.right tr td {
+padding-right: 20px;
+padding-top:10px;
+}

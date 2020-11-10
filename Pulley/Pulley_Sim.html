@@ -1,0 +1,323 @@
+
+<!doctype= html>
+
+<html>
+<head>
+
+
+  <title>Pulley</title>
+
+<body onload="start_sim()">
+
+<div style="float: left; padding-right: 20px;">
+	<p>m<sub>pulley</sub> = <span id="sliderpulleymass">10</span> kg </p><input id="m_pulley" type="range" step="1" value="10" min="5" max="15" onInput="pulleymasschange(this.value)" onmouseup="start_sim()">
+	<p>M = <span id="slidermass1">1.5</span> kg </p><input id="M" type="range" step="0.1" value="1.5" min="0" max="2" onInput="mass1change(this.value)" onmouseup="start_sim()">
+	<p>m = <span id="slidermass2">0.5</span> kg </p><input id="m" type="range" step="0.1" value="0.5" min="0" max="2" onInput="mass2change(this.value)" onmouseup="start_sim()"><br><br>
+
+</div>
+	<div style="float: left; padding-right: 10px;">
+		<p>k = <span id="slider_k">2</span> m </p><input id="k" type="range" step="0.1" value="2" min="1" max="3" onInput="k_change(this.value)" onmouseup="start_sim()">
+		<p>R = <span id="slider_R">2.5</span> m </p><input id="R" type="range" step="0.1" value="2.5" min="2" max="3" onInput="R_change(this.value)" onmouseup="start_sim()">
+		<p>r = <span id="slider_r">1.5</span> m </p><input id="r" type="range" step="0.1" value="1.5" min="1" max="2" onInput="r_change(this.value)" onmouseup="start_sim()">
+	</div>
+	<br><br>
+
+
+		<canvas id="myCanvas" width="500" height="400" style="border:1px solid #d3d3d3; float: left;"></canvas>
+  <script>
+
+function pulleymasschange(val) {
+	document.getElementById('sliderpulleymass').innerHTML = val;
+}
+
+function mass1change(val) {
+	document.getElementById('slidermass1').innerHTML = val;
+}
+
+function mass2change(val) {
+	document.getElementById('slidermass2').innerHTML = val;
+}
+
+function k_change(val) {
+	document.getElementById('slider_k').innerHTML = val;
+}
+
+function R_change(val) {
+	document.getElementById('slider_R').innerHTML = val;
+}
+
+function r_change(val) {
+	document.getElementById('slider_r').innerHTML = val;
+}
+
+	var ctx = getCanvas();
+
+var myinterval;
+var timer = 0;
+var dt = 0.005; // in seconds
+//scale is 50 pixles per meter
+var scale = 30
+var canvasheight = document.getElementById('myCanvas').height / scale //canvasheight in meters
+var canvaswidth = document.getElementById('myCanvas').width / scale // canvaswidth in meters
+
+//pulley and masses
+var m_pulley;
+var M;
+var m;
+var k; //radius of gyration
+var R;
+var r;
+var x_0; //x position of center of pulley
+var y_0; //y position of center of pulley
+
+var t;
+var I_o;
+
+//initial movements
+var theta;
+var w;
+var alpha; 
+var a_1;
+var a_2;
+var v_1;
+var v_2;
+var y_1
+var y_2;
+
+//Kinetic Energy
+var KE_1;
+var KE_2;
+var KE_pulley;
+var KE_total;
+
+var rho;
+
+function start_sim(){
+	var ctx = getCanvas();
+
+	clearInterval(myinterval);
+//inputs and geometry
+m_pulley = Number(document.getElementById("m_pulley").value);
+M = Number(document.getElementById("M").value);
+m = Number(document.getElementById("m").value);
+k = Number(document.getElementById("k").value);
+r = Number(document.getElementById("r").value);
+R = Number(document.getElementById("R").value);
+x_0 = 0.8 * canvaswidth; //center of pulley
+y_0 = 0.5 * canvasheight - 3;
+
+//thickness of masses
+t = 0.5
+rho = 5 //area density: kg / m^2
+
+//intial movements
+a_1 = 0;
+a_2 = 0;
+v_1 = 0;
+v_2 = 0;
+y_1 = 3.4;
+y_2 = 3.4;
+alpha = 0;
+w = 0;
+theta = 0;
+
+KE_1 = 0;
+KE_2 = 0;
+KE_pulley = 0;
+KE_total = 0;
+
+I_o = m_pulley * k * k;
+
+timer = 0;
+	myinterval = setInterval(function(){simulate_calcs()}, dt * 1000)
+}
+
+
+function simulate_calcs() {
+var ctx=getCanvas();
+
+ctx.clearRect(0,0,canvaswidth*scale,canvasheight*scale);
+
+	//timer
+	// ctx.fillStyle="black";
+	// ctx.fillText("KE of block 1: " + Math.round(KE_1*100)/100 + " J", 10, 30);
+	// ctx.fillText("KE of block 2: " + Math.round(KE_2*100)/100 + " J", 10, 50);
+	// ctx.fillText("KE of pulley: " + Math.round(KE_pulley*100)/100 + " J", 10, 70);
+	// ctx.fillText("Total KE: " + Math.round(KE_total*100)/100 + " J", 10, 90);
+
+	timer = timer + dt;
+	ctx.fillStyle="black"
+	ctx.fillText("Timer: " + Math.round(timer*10)/10 + " s", 10, 20);
+	ctx.font = "15px Arial"
+
+	ctx.fillStyle="black";
+	ctx.fillText(" Block 1", 1, 2.5*scale);
+	ctx.fillText(" Block 2", 1, 3.5*scale);
+	ctx.fillText("    Pulley", 1, 4.5*scale);
+	ctx.fillText("      Total", 1, 5.5*scale);
+
+
+	//graph
+	var graphscale = 2/scale; // J/m
+	drawRectangle(2,2,KE_1*graphscale,1);
+	ctx.lineWidth = 2;
+	ctx.fillStyle="rgba(135,206,250,0.6)"
+	ctx.fill();
+	drawRectangle(2,3,KE_2*graphscale,1);
+	ctx.fillStyle="rgba(245,201,63,0.6)"
+	ctx.fill();
+	drawRectangle(2,4,KE_pulley*graphscale,1);
+	ctx.fillStyle="rgba(169,169,169,0.6)"
+	ctx.fill();
+	drawRectangle(2,5,KE_total*graphscale,1);
+	ctx.fillStyle="rgba(154,205,50,0.6)"
+	ctx.fill();
+
+	
+	//pulley
+	drawBall(x_0, y_0, R);
+	drawBall(x_0, y_0, r);
+
+	//Block 1 (M)
+	drawRectangle(x_0 - R - t/2, y_0 + y_1, t, M/(t*rho));
+	ctx.fillStyle="rgba(135,206,250,1)"
+	ctx.fill();
+
+	drawLine(x_0 - R, y_0, x_0 - R, y_0 + y_1);
+
+	//Block 2 (m)
+	drawRectangle(x_0 + r - t/2, y_0 + y_2, t, m/(t*rho));
+	ctx.fillStyle="rgba(245,201,63,1)"
+	ctx.fill();
+
+	drawLine(x_0 +r, y_0, x_0 + r, y_0 + y_2);
+
+	//rotation of bar: CCW +
+	alpha = (M*R*9.81 - m*r*9.81)/(I_o + m*r*r + M*R*R);
+	w = w + alpha * dt;
+	theta = theta + w * dt;
+
+	//blocks
+	if (y_1 < 0) {
+		w=0;
+		start_sim();
+	} else if (y_2 < 0) {
+		w=0;
+		start_sim();
+	} else {
+	y_1 = y_1 + R * w * dt;
+	y_2 = y_2 - r * w * dt;
+	}
+
+	//Kinetic Energy
+	KE_1 = (1/2)*M*(R*w)*(R*w);
+	KE_2 = (1/2)*m*(r*w)*(r*w);
+	KE_pulley = (1/2)*I_o*w*w;
+	KE_total = KE_1 + KE_2 + KE_pulley;
+}
+
+
+
+function getCanvas() {
+	var c = document.getElementById("myCanvas");
+	return c.getContext("2d");
+} 
+
+function drawRectangle( x, y, width, height) {
+
+	ctx.beginPath();
+	ctx.rect(x * scale, y * scale, width * scale, height * scale);
+	ctx.stroke();
+}
+
+function drawRectangleSlant(x1, y1, L, t, theta) {
+
+	ctx.beginPath();
+	var gr = ctx.createLinearGradient(scale * x1, scale * y1, scale * (x1 + L*Math.cos(theta)), scale * (y1 + L*Math.sin(theta)));
+	gr.addColorStop(0,'rgb(204,204,204)');
+	gr.addColorStop(0.5, 'rgb(191,191,191');
+	gr.addColorStop(1,'rgb(200,200,200)');
+	ctx.fillStyle = gr;
+
+	ctx.moveTo(scale * x1, scale * y1);
+	ctx.lineTo(scale * (x1 + L * Math.cos(theta)), scale * (y1 + L * Math.sin(theta)));
+	ctx.lineTo(scale * (x1 + L * Math.cos(theta) - t * Math.sin(theta)), scale * (y1 + L * Math.sin(theta) + t * Math.cos(theta)));
+	ctx.lineTo(scale * (x1 - t * Math.sin(theta)), scale * (y1 + t * Math.cos(theta)));
+	ctx.lineTo(scale * x1, scale * y1);
+	ctx.stroke();
+
+	ctx.fill();
+	ctx.closePath();
+}
+
+function drawLine(x1,y1,x2,y2) {
+
+	ctx.beginPath();
+	ctx.moveTo(x1 * scale,y1 * scale);
+	ctx.lineTo(x2 * scale,y2 * scale);
+	ctx.stroke();
+}
+
+function drawArrowLarge(x,y,x_tip,y_tip) {
+
+	var theta = Math.atan((y_tip - y) / (x_tip - x));
+	if (x_tip - x < 0) {
+    theta = theta + Math.PI;
+} else { 
+    theta = theta;
+}
+	ctx.beginPath();
+	ctx.moveTo(x * scale, y * scale);
+	ctx.lineTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.3 * Math.sin(0.25 * Math.PI - theta), scale*y_tip - scale*0.3 * Math.cos(0.25 * Math.PI - theta));
+	ctx.moveTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.3 * Math.cos(0.25 * Math.PI - theta), scale*y_tip + scale*0.3 * Math.sin(0.25 * Math.PI - theta));
+	ctx.stroke();
+}
+
+function drawArrowSmall(x,y,x_tip,y_tip,color) {
+
+
+	var gr = ctx.createLinearGradient(x,y,x_tip,y_tip);
+	gr.addColorStop(0,color);
+	gr.addColorStop(1,color);
+	ctx.strokeStyle = gr
+
+	var theta = Math.atan((y_tip - y) / (x_tip - x));
+		if (x_tip - x < 0) {
+	    theta = theta + Math.PI;
+	} else { 
+	    theta = theta;
+	}
+	ctx.beginPath();
+	ctx.moveTo(x * scale, y * scale);
+	ctx.lineTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.15 * Math.sin(Math.PI/3 - theta), scale*y_tip - scale*0.15 * Math.cos(Math.PI/3 - theta));
+	ctx.moveTo(x_tip * scale, y_tip * scale);
+	ctx.lineTo(scale*x_tip - scale*0.15 * Math.cos(Math.PI/6 - theta), scale*y_tip + scale*0.15 * Math.sin(Math.PI/6 - theta));
+	ctx.stroke();
+
+	ctx.closePath();
+}
+
+function drawBall(x1,y1,r) {
+
+
+	var gr = ctx.createLinearGradient(scale*x_0 - scale*R*Math.cos(theta),scale*y_0 + scale*R*Math.sin(theta),scale*x_0 + scale*R*Math.cos(theta), scale*y_0 - scale*R*Math.sin(theta));
+	gr.addColorStop(0,'rgb(220,220,220)');
+	gr.addColorStop(0.5, 'rgb(160,160,160');
+	gr.addColorStop(1,'rgb(200,200,200)');
+	ctx.fillStyle = gr;
+
+	ctx.beginPath();
+	ctx.arc(x1 * scale,y1 * scale,r * scale,0,2*Math.PI);
+	ctx.stroke();
+	ctx.closePath();
+
+	ctx.fill();
+
+}
+
+  </script>
+</body>
+</html>
